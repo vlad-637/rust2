@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::{Arc, RwLock}, time::Duration};
 use axum::{error_handling::HandleErrorLayer, extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tower::{BoxError, ServiceBuilder};
 use uuid::Uuid;
 
@@ -9,7 +9,7 @@ async fn main() {
     let db = Db::default();
 
     let app = Router::new()
-        .route("/todos", get(todos_index))
+        .route("/todos", get(todos_index).post(todos_create))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {
@@ -27,7 +27,7 @@ async fn main() {
         )
         .with_state(db);
     
-    let listener = tokio::net::TcpListener::bind("127.0.0.3002")
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3002")
         .await
         .unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -46,11 +46,28 @@ async fn todos_index(
     Json(todos)
 }
 
+#[derive(Debug, Deserialize)]
+struct CreateTodo {
+    text: String,
+}
+
+async fn todos_create(State(db): State<Db>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
+    let todo = Todo {
+        id: Uuid::new_v4(),
+        text: input.text,
+        completed: false,
+    };
+
+    db.write().unwrap().insert(todo.id, todo.clone());
+
+    (StatusCode::CREATED, Json(todo))
+}
+
 type Db = Arc<RwLock<HashMap<Uuid, Todo>>>;
 
 #[derive(Debug, Serialize, Clone)]
 struct Todo {
     id: Uuid,
     text: String, 
-    complete: bool,
+    completed: bool,
 }
