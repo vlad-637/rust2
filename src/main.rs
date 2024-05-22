@@ -1,6 +1,17 @@
-use std::{collections::HashMap, sync::{Arc, RwLock}, time::Duration};
-use axum::{error_handling::HandleErrorLayer, extract::{Path, State}, http::StatusCode, response::IntoResponse, routing::{get, patch}, Json, Router};
+use axum::{
+    error_handling::HandleErrorLayer,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, patch},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 use tower::{BoxError, ServiceBuilder};
 use uuid::Uuid;
 
@@ -27,22 +38,17 @@ async fn main() {
                 .into_inner(),
         )
         .with_state(db);
-    
+
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3002")
         .await
         .unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn todos_index(
-    State(db): State<Db>,
-) -> impl IntoResponse {
+async fn todos_index(State(db): State<Db>) -> impl IntoResponse {
     let todos = db.read().unwrap();
 
-    let todos = todos
-        .values()
-        .cloned()
-        .collect::<Vec<_>>();
+    let todos = todos.values().cloned().collect::<Vec<_>>();
 
     Json(todos)
 }
@@ -108,6 +114,6 @@ type Db = Arc<RwLock<HashMap<Uuid, Todo>>>;
 #[derive(Debug, Serialize, Clone)]
 struct Todo {
     id: Uuid,
-    text: String, 
+    text: String,
     completed: bool,
 }
